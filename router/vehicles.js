@@ -53,6 +53,45 @@ router.get('/:vehicleId/pings', (req, res) => {
     res.status(200).json(vehiclePings);
 });
 
+// POST /vehicles/:vehicleId/pings (Create a new ping for a vehicle)
+router.post('/:vehicleId/pings', (req, res) => {
+    const id = Number(req.params.vehicleId);
+    const apiKey = req.get('X-API-Key');
+
+    if (!apiKey) {
+        return res.status(401).json({ error: 'Missing X-API-Key header' });
+    }
+
+    if (apiKey !== 'key_v01') {
+        return res.status(403).json({ error: 'Invalid API key' });
+    }
+
+    const vehicle = seedData.vehicles.find(v => v.id === id);
+    if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+    }
+
+    const { latitude, longitude, speed } = req.body;
+    if (latitude === undefined || longitude === undefined || speed === undefined) {
+        return res.status(400).json({ error: 'latitude, longitude, and speed are required' });
+    }
+
+    const nextPingId = seedData.pings.reduce((max, ping) => Math.max(max, ping.id), 0) + 1;
+    const newPing = {
+        id: nextPingId,
+        vehicle_id: id,
+        latitude,
+        longitude,
+        speed,
+        timestamp: new Date().toISOString()
+    };
+
+    seedData.pings.push(newPing);
+    res.status(201)
+        .location(`/v1/api/vehicles/${id}/pings/${nextPingId}`)
+        .json(newPing);
+});
+
 // GET /vehicles/:vehicle-id/last-position 
 router.get('/:vehicleId/last-position', (req, res) => {
     const id = req.params.vehicleId;
